@@ -1,0 +1,108 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useLoader } from "@/context/loader-context"
+import { Search, Loader2 } from "lucide-react"
+import { Hero } from "@/components/ui/hero-new"
+import { HowItWorks } from "@/components/ui/how-it-works"
+
+export default function Home() {
+  const { navigate, startLoading } = useLoader()
+  const [query, setQuery] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [showError, setShowError] = useState(false)
+
+  const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (!query.trim()) {
+        setShowError(true)
+        return
+      }
+
+      setLoading(true)
+      startLoading() // Show global overlay immediately — no frozen UI
+      try {
+        const res = await fetch("/api/decisions/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          navigate(`/decision/${data.id}/options/`, { showLoader: false })
+        } else {
+          console.error("Failed to create decision")
+          alert("Server error: Could not save the decision. Please ensure the backend is running.")
+        }
+      } catch (error) {
+        console.error("Error:", error)
+        alert("Network error: Could not reach the server.")
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  return (
+    <>
+
+      <Hero
+        title="Evalora"
+        subtitle={
+          <span className="flex flex-col md:flex-row items-center justify-center gap-2">
+            <span>Evaluate. Compare. Decide.</span>
+            <span className="hidden md:inline text-gray-400">|</span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-medium">A smart decision companion system</span>
+          </span>
+        }
+      >
+        <div className="flex flex-col items-center gap-6 mt-4">
+
+          {/* Heading */}
+          <h2 className="bg-gradient-to-br from-gray-900 to-gray-500 bg-clip-text text-transparent dark:from-gray-100 dark:to-gray-400 text-2xl md:text-3xl font-semibold tracking-tight text-center animate-fade-up">
+            What do you want to Search ?
+          </h2>
+
+          {/* Search Bar */}
+          <div className="relative w-full max-w-2xl animate-fade-up">
+            <div className="relative flex items-center w-full h-14 rounded-full border border-gray-200 bg-white/80 backdrop-blur-sm px-4 shadow-lg hover:shadow-xl transition-shadow dark:border-gray-800 dark:bg-black/80">
+              {loading
+                ? <Loader2 className="mr-3 h-5 w-5 shrink-0 animate-spin text-indigo-500" />
+                : <Search className="mr-3 h-5 w-5 shrink-0 opacity-50 text-gray-500" />
+              }
+              <input
+                className="flex h-full w-full rounded-full bg-transparent py-3 text-lg outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-50 dark:placeholder:text-gray-500 text-black dark:text-white"
+                placeholder="e.g. Choose a laptop under budget..."
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  if (showError) setShowError(false)
+                }}
+                onKeyDown={handleKeyDown}
+                disabled={loading}
+                autoFocus
+              />
+            </div>
+
+
+          </div>
+
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 animate-fade-up font-medium">
+              Enter to continue
+            </p>
+            {showError && (
+              <span className="text-sm font-medium text-red-500 text-center">
+                Warning: Please enter a decision to search for.
+              </span>
+            )}
+          </div>
+        </div>
+      </Hero>
+      {/* How it works Section */}
+      <HowItWorks />
+    </>
+  )
+}
